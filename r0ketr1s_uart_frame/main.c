@@ -57,7 +57,7 @@ void init_serial() {
 
 	serial_bridge = open("/dev/serial/by-id/usb-MICROBUILDER_LPC1343_COM_PORT_DEMO00000000-if00", O_RDWR | O_NONBLOCK);
 //	serial_bridge = open("/dev/cu.usbmodem5d11", O_RDWR | O_NONBLOCK);
-	assert(serial_bridge != -1);
+	//assert(serial_bridge != -1);
 
 	struct termios config;
 	memset(&config, 0, sizeof(config));
@@ -75,7 +75,7 @@ void init_serial() {
 	tcsetattr(serial_bridge, TCSANOW, &config);
 
 
-	serial_g3d2 = open("/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A100DDXN-if00-port0", O_RDWR | O_NONBLOCK);
+	serial_g3d2 = open("/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A100DDXG-if00-port0", O_RDWR | O_NONBLOCK);
 	assert(serial_g3d2 != -1);
 
 	struct termios config2;
@@ -113,24 +113,26 @@ void push_lines(unsigned int nr, unsigned int lines) {
 
 void send_cmd(int cmd, const unsigned char* buffer, int len) {
 
+	return;
+
 	printf("send cmd %c len %d\n", cmd, len);
 
 	static unsigned char magic[4] = { CMD_ESC, 0, CMD_ESC, CMD_END };
 
 	magic[1] = cmd;
 	tcdrain(serial_bridge);
-	assert(write(serial_bridge, magic, 2) == 2);
+	//assert(write(serial_bridge, magic, 2) == 2);
 	int i;
 	for(i = 0; i < len; i++) {
 		tcdrain(serial_bridge);
-		assert(write(serial_bridge, &buffer[i], 1) == 1);
+		//assert(write(serial_bridge, &buffer[i], 1) == 1);
 		if(buffer[i] == 92) {
 			tcdrain(serial_bridge);
-			assert(write(serial_bridge, &buffer[i], 1) == 1);
+		//	assert(write(serial_bridge, &buffer[i], 1) == 1);
 		}
 	}
 	tcdrain(serial_bridge);
-	assert(write(serial_bridge, magic + 2, 2) == 2);
+	//assert(write(serial_bridge, magic + 2, 2) == 2);
 	
 }
 
@@ -721,20 +723,22 @@ void push_frame_buffer() {
 	unsigned char c = 103;
 	write(serial_g3d2, &c, 1);
 
+	unsigned char buf[288];
+
 	int x = 0, y = 0, mod_row = 0, i;
 
 	for(i = 0; i < (DISPLAY_WIDTH*DISPLAY_HEIGHT / 2); i++) {
-		c= display[31 - (y + mod_row)][x] + ((display[31 - (y + mod_row + 1)][x]) << 4);
-		write(serial_g3d2, &c, 1);
+
+		buf[(x*4)+y/2] = display[31 - (y + mod_row)][x] + ((display[31 - (y + mod_row + 1)][x]) << 4);
 		
 		y += 2;
 		if(y == 8) {
 			y=0;
 			x++;
-			if((x % 8) == 0) {
-				tcdrain(serial_g3d2);
-			}
 			if(x == 72) {
+				write(serial_g3d2, &buf, 288);
+				tcdrain(serial_g3d2);
+
 				x=0;
 				mod_row+=8;
 			}
